@@ -53,7 +53,7 @@ def get_DOI(arxivID):
 
 if __name__ == "__main__":
    verbose=False
-   if ('-h' or '--help') in sys.argv: print "help option"; sys.exit()
+   if ('-h' in sys.argv) or ('--help' in sys.argv): usage(); sys.exit()
    if '-v' in sys.argv:
       verbose=True
       sys.argv.remove('-v')
