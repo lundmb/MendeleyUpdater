@@ -73,8 +73,9 @@ def get_paper_info(doi_val, arXiv_val):
    #print doi_val, arXiv_val
    if arXiv_val: arXiv_val=re.sub('v.$','',arXiv_val)
    if doi_val:
-      if doi_val.startswith('10.'): papers= list(ads.SearchQuery(doi=doi_val))
-   elif arXiv_val: papers= list(ads.SearchQuery(arXiv=arXiv_val))
+      if (doi_val.startswith('10.')==False): doi_val=None
+   if doi_val: papers= list(ads.SearchQuery(doi=doi_val, fl='first_author, bibcode, identifier, abstract, year, volume, pub, issue, page, keyword'))
+   elif arXiv_val: papers= list(ads.SearchQuery(arXiv=arXiv_val, fl='first_author, bibcode, identifier, abstract, year, volume, pub, issue, page, keyword'))
    else: print "No DOI or ArXiv ID."; return None
    if len(papers) < 1: print"No valid paper found!"; return None
    elif len(papers) > 1: print "Multiple matching papers!"; return None
@@ -106,8 +107,12 @@ def ADS_API():
       Doc_ID=row[0]
       #print Doc_ID
       if Doc_ID <= args.start: continue
+      if row[1]:
+         if (row[1].startswith('10.')==False): print "Bad", row[1]
       fetch=False
       if (args.DOI and row[1]==None ): fetch=True
+      if (args.DOI and row[1] ):
+         if (row[1].startswith('10.')==False):fetch=True
       if (args.abstract and row[3]==None ): fetch=True
       if (args.pub and (row[4]==None or row[5]==None or row[6]==None or row[7]==None )): fetch=True
       if args.keyword: fetch=True
@@ -133,6 +138,17 @@ def ADS_API():
          if args.verify:
             c.execute('UPDATE {tn} SET confirmed=?, WHERE {cid}=?'.\
                format(cid=id_column, tn=table_name), ('false', row[0]))
+      if (args.DOI and row[1]!=None and DOInumber!=None):
+         if (row[1].startswith('10.')==False):
+            c.execute('UPDATE {tn} SET {coi1}=? WHERE {cid}=?'.\
+               format(cid=id_column, coi1=DOI_column, tn=table_name), (DOInumber, row[0]))
+            counter1=counter1+1; article_updated=1
+            if args.verbose:
+               print "Added DOI:", DOInumber, "for",row[2]
+            if args.verify:
+               c.execute('UPDATE {tn} SET confirmed=?, WHERE {cid}=?'.\
+                  format(cid=id_column, tn=table_name), ('false', row[0]))
+
       # add arXiv
       if (args.arXiv and row[2]==None and arXivnumber!=None):
          c.execute('UPDATE {tn} SET {coi1}=? WHERE {cid}=?'.\
@@ -161,7 +177,7 @@ def ADS_API():
       issue_val=paper_info.issue
       page_val=paper_info.page[0]
       if (args.pub and ((row[4]==None and pub_val) or (row[5]==None and year_val) or (row[6]==None and issue_val) or (row[7]==None and volume_val) or (row[8]==None and page_val))):
-         if pub_val.lower():
+         if pub_val:
             if 'arxiv' in pub_val.lower(): print ""; continue
          if args.verbose:
             print "Adding publication info:", year_val, pub_val, volume_val, issue_val, page_val
